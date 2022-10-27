@@ -1,0 +1,16 @@
+#Alignment using HISAT
+#Opossum (paired-end)
+module load HISAT2/2.2.1-gompi-2020b-Python-3.8.6; hisat2 -q --phred33 -p8 --dta -x /pathto/HISAT2_index/index_monDom5/monDom5 -1 /pathto/RNAseqFile1.fastq.gz -2 /pathto/RNAseqFile2.fastq.gz -S OutFileName.sam
+
+#Mouse (singleEnd)
+module load HISAT2/2.2.1-gompi-2020b-Python-3.8.6; hisat2 -q --phred33 -p8 --dta -x /pathto/HISAT2_index/index_mm10/mm10 -U /pathto/RNAseqFile.fastq  -S OutFileName.sam 
+
+#Convert to BAM file
+module load SAMtools/1.12-GCCcore-10.2.0; samtools view -u /pathto/OutFileName.sam | samtools sort -o OutFileName.bam 
+
+#Transcript Assembly with StringTie
+#Opossum
+module load StringTie/2.1.4-GCCcore-10.2.0; stringtie /pathto/OutFileName.bam -p 8 -e -G /pathto/Genomes/Monodelphis_domestica.ASM229v1.104.gtf -o OutFileName.gtf -A OutFileName_abundance.tab -l OutFileName
+
+#Mouse
+module load StringTie/2.1.4-GCCcore-10.2.0; stringtie /pathto/OutFileName.bam -p 8 -e -G /pathto/Genomes/Mus_musculus.GRCm39.104.gtf -o OutFileName.gtf -A OutFileName_abundance.tab -l OutFileName
