@@ -150,7 +150,7 @@ for phastcons
 ftp> cd goldenPath/mm39/phastCons35way
 ftp> get mm39.35way.phastCons.bw
 
-```{r}
+
 bigWigAverageOverBed mm39.phastCons35way.bw tss_upMd_mod_chrom.bed -bedOut=tss_upMd_mod_out.bed tss_upMd_mod_out.tab
 
 bigWigAverageOverBed mm39.phastCons35way.bw tss_upMm_mod_chrom.bed -bedOut=tss_upMm_mod_out.bed tss_upMm_mod_out.tab
@@ -159,7 +159,6 @@ bigWigAverageOverBed mm39.phastCons35way.bw tss_o2o_mod_chrom.bed -bedOut=tss_o2
 
 bigWigAverageOverBed mm39.phastCons35way.bw tss_highcons_mod_chrom.bed -bedOut=tss_highcons_mod_out.bed tss_highcons_mod_out.tab
 
-```
 
 #PhyloP analysis
 #in Linux
@@ -169,7 +168,7 @@ ftp> cd goldenPath/mm39/phyloP35way
 ftp> get mm39.phyloP35way.bw
 
 #phyloP
-```{r}
+
 bigWigAverageOverBed mm39.phyloP35way.bw tss_upMd_mod_chrom.bed -bedOut=tss_upMd_mod_out_phyloP.bed tss_upMd_mod_out_phyloP.tab
 
 bigWigAverageOverBed mm39.phyloP35way.bw tss_upMm_mod_chrom.bed -bedOut=tss_upMm_mod_out_phyloP.bed tss_upMm_mod_out_phyloP.tab
@@ -177,7 +176,7 @@ bigWigAverageOverBed mm39.phyloP35way.bw tss_upMm_mod_chrom.bed -bedOut=tss_upMm
 bigWigAverageOverBed mm39.phyloP35way.bw tss_o2o_mod_chrom.bed -bedOut=tss_o2o_mod_out_phyloP.bed tss_o2o_out_phyloP.tab
 
 bigWigAverageOverBed mm39.phyloP35way.bw tss_highcons_mod_chrom.bed -bedOut=tss_highcons_mod_out_phyloP.bed tss_highcons_mod_out_phyloP.tab
-```
+
 
 #Back in R for visualizing and stats
 #PhastCon
