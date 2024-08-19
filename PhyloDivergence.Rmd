@@ -1,0 +1,1032 @@
+Note: upMm = higher in mouse
+      upMd = higher in opossum
+      highcons= subset of genes with high conservation of gene expression
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ape)
+library(ggfortify)
+```
+
+```{r}
+upMm <- read.table("upMm_genes.txt", header = T)
+upMd <- read.table("upMd_genes.txt", header = T)
+highcons <- read.table("HighCons_genes.txt", header = T)
+o2o <- read.table("OneToOne_genes.txt", header = T)
+zFPKM_sixspecies <- read.delim("zFPKM_sixspecies.txt", header = T)
+#table of zFPKM for each replicate of each species in two cell types
+zFPKM_sixspecies_avg <- read.delim("zFPKM_sixspecies_avg.txt", header = T)
+#table of zFPKM averaged between species replicates of each species in two cell types
+```
+
+#For all genes with one to one homology across all six species
+#format data
+```{r}
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_2 <- zFPKM_sixspecies[!duplicated(zFPKM_sixspecies$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_2) <- zFPKM_sixspecies_2$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_2 <- zFPKM_sixspecies_2[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+```{r}
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_avg_2 <- zFPKM_sixspecies_avg[!duplicated(zFPKM_sixspecies_avg$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_avg_2) <- zFPKM_sixspecies_avg_2$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_avg_2 <- zFPKM_sixspecies_avg_2[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+#Spearman's correlation
+```{r}
+corr <- cor(zFPKM_sixspecies_2, method = "spearman")
+corr_avg <- cor(zFPKM_sixspecies_avg_2, method = "spearman")
+```
+
+
+```{r}
+#to make 1-rho
+spear <- function(x) {                    
+  (1-x)
+}
+```
+
+```{r}
+corr_new <- as.tibble(corr)
+
+corr_new <- corr_new %>% 
+  mutate_all(spear)
+
+corr_new <- as.matrix(corr_new)
+colnames(corr_new) <- c("Human 1 PA", "Human 1 RS", "Human 2 PA", "Human 2 RS",  "Human 3 PA", "Human 3 RS", "Rhesus 1 PA", "Rhesus 1 RS",  "Rhesus 2 PA", "Rhesus 2 RS", "Mouse 1 PA", "Mouse 1 RS", "Mouse 2 PA", "Mouse 2 RS", "Bull PA", "Bull RS", "Opossum 1 PA", "Opossum 1 RS", "Opossum 2 PA", "Opossum 2 RS", "Chicken PA", "Chicken RS")
+```
+
+#neighbor joining tree
+```{r}
+bionj_all <- root((bionj(corr_upMm_new)), outgroup = "Chicken PA")
+plot(bionj_all)
+add.scale.bar(cex = 1, font = 2, col = "blue", lcol = "blue", length = 0.05)
+```
+
+#For genes with highly conserved expression between mouse and opossum
+#Subset and format data
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_highcons <- inner_join(zFPKM_sixspecies, highcons, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_highcons <- zFPKM_sixspecies_highcons[!duplicated(zFPKM_sixspecies_highcons$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_highcons) <- zFPKM_sixspecies_highcons$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_highcons <- zFPKM_sixspecies_highcons[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_highcons_avg <- inner_join(zFPKM_sixspecies_avg, highcons, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_highcons_avg <- zFPKM_sixspecies_highcons_avg[!duplicated(zFPKM_sixspecies_highcons_avg$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_highcons_avg) <- zFPKM_sixspecies_highcons_avg$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_highcons_avg <- zFPKM_sixspecies_highcons_avg[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+#Spearman's Correlation
+```{r}
+corr_highcons <- cor(zFPKM_sixspecies_highcons, method = "spearman")
+corr_highcons_avg <- cor(zFPKM_sixspecies_highcons_avg, method = "spearman")
+
+
+corr_highcons_new <- as.tibble(corr_highcons)
+
+corr_highcons_new <- corr_highcons_new %>% 
+  mutate_all(spear)
+
+corr_highcons_new <- as.matrix(corr_highcons_new)
+colnames(corr_highcons_new) <- c("Human 1 PA", "Human 1 RS", "Human 2 PA", "Human 2 RS",  "Human 3 PA", "Human 3 RS", "Rhesus 1 PA", "Rhesus 1 RS",  "Rhesus 2 PA", "Rhesus 2 RS", "Mouse 1 PA", "Mouse 1 RS", "Mouse 2 PA", "Mouse 2 RS", "Bull PA", "Bull RS", "Opossum 1 PA", "Opossum 1 RS", "Opossum 2 PA", "Opossum 2 RS", "Chicken PA", "Chicken RS")
+```
+
+#neighbor joining tree
+```{r}
+bionj_highcons <- root((bionj(corr_highcons_new)), outgroup = "Chicken PA")
+plot(bionj_highcons)
+add.scale.bar(cex = 1, font = 2, col = "blue", lcol = "blue", length = 0.05)
+```
+
+
+#For genes with higher expression in opossum
+#Subset and format data
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_upMd <- inner_join(zFPKM_sixspecies, upMd, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_upMd <- zFPKM_sixspecies_upMd[!duplicated(zFPKM_sixspecies_upMd$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_upMd) <- zFPKM_sixspecies_upMd$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_upMd <- zFPKM_sixspecies_upMd[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_upMd_avg <- inner_join(zFPKM_sixspecies_avg, upMd, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_upMd_avg <- zFPKM_sixspecies_upMd_avg[!duplicated(zFPKM_sixspecies_upMd_avg$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_upMd_avg) <- zFPKM_sixspecies_upMd_avg$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_upMd_avg <- zFPKM_sixspecies_upMd_avg[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+
+#Spearman's Correlation
+```{r}
+corr_upMd <- cor(zFPKM_sixspecies_upMd, method = "spearman")
+corr_upMd_avg <- cor(zFPKM_sixspecies_upMd_avg, method = "spearman")
+
+corr_upMd_new <- as.tibble(corr_upMd)
+
+corr_upMd_new <- corr_upMd_new %>% 
+  mutate_all(spear)
+
+corr_upMd_new <- as.matrix(corr_upMd_new)
+colnames(corr_upMd_new) <- c("Human 1 PA", "Human 1 RS", "Human 2 PA", "Human 2 RS",  "Human 3 PA", "Human 3 RS", "Rhesus 1 PA", "Rhesus 1 RS",  "Rhesus 2 PA", "Rhesus 2 RS", "Mouse 1 PA", "Mouse 1 RS", "Mouse 2 PA", "Mouse 2 RS", "Bull PA", "Bull RS", "Opossum 1 PA", "Opossum 1 RS", "Opossum 2 PA", "Opossum 2 RS", "Chicken PA", "Chicken RS")
+```
+
+#neighbor joining tree
+```{r}
+bionj_upMd <- root((bionj(corr_upMd_new)), outgroup = "Chicken PA")
+plot(bionj_upMd)
+add.scale.bar(cex = 1, font = 2, col = "blue", lcol = "blue", length = 0.05)
+```
+
+
+#For genes with higher expression in mouse
+#Subset and format data
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_upMm <- inner_join(zFPKM_sixspecies, upMm, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_upMm <- zFPKM_sixspecies_upMm[!duplicated(zFPKM_sixspecies_upMm$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_upMm) <- zFPKM_sixspecies_upMm$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_upMm <- zFPKM_sixspecies_upMm[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+```{r}
+#get zFPKM values for specific genes (higher in mouse)
+zFPKM_sixspecies_upMm_avg <- inner_join(zFPKM_sixspecies_avg, upMm, by = c("mouse" = "Mouse_Gene"))
+
+#remove duplicated ensmbl names if there are any
+zFPKM_sixspecies_upMm_avg <- zFPKM_sixspecies_upMm_avg[!duplicated(zFPKM_sixspecies_upMm_avg$hsapiens_homolog_ensembl_gene), ]
+
+#make Ensembl IDs row names and remove the gene name columns 
+rownames(zFPKM_sixspecies_upMm_avg) <- zFPKM_sixspecies_upMm_avg$hsapiens_homolog_ensembl_gene
+zFPKM_sixspecies_upMm_avg <- zFPKM_sixspecies_upMm_avg[ ,-c(1)]
+#depending on zFPKM table, may need to remove more columns of gene names get repeated or other species Ensembl IDs are there (just want zFPKM values)
+```
+
+
+
+#Spearman's Correlation
+```{r}
+corr_upMm <- cor(zFPKM_sixspecies_upMm, method = "spearman")
+corr_upMm_avg <- cor(zFPKM_sixspecies_upMm_avg, method = "spearman")
+
+corr_upMm_new <- as.tibble(corr_upMm)
+
+corr_upMm_new <- corr_upMm_new %>% 
+  mutate_all(spear)
+
+corr_upMm_new <- as.matrix(corr_upMm_new)
+colnames(corr_upMm_new) <- c("Human 1 PA", "Human 1 RS", "Human 2 PA", "Human 2 RS",  "Human 3 PA", "Human 3 RS", "Rhesus 1 PA", "Rhesus 1 RS",  "Rhesus 2 PA", "Rhesus 2 RS", "Mouse 1 PA", "Mouse 1 RS", "Mouse 2 PA", "Mouse 2 RS", "Bull PA", "Bull RS", "Opossum 1 PA", "Opossum 1 RS", "Opossum 2 PA", "Opossum 2 RS", "Chicken PA", "Chicken RS")
+```
+
+#neighbor joining tree
+```{r}
+bionj_upMm <- root((bionj(corr_upMm_new)), outgroup = "Chicken PA")
+plot(bionj_upMm)
+add.scale.bar(cex = 1, font = 2, col = "blue", lcol = "blue", length = 0.05)
+```
+
+
+
+
+#branch lengths
+#calculating total branch length for each gene subset tree
+```{r}
+edges_upMm <- as.data.frame(bionj_upMm["edge"])
+edges_upMm$branch <- rownames(edges_upMm)
+branch_length_upMm <- as.data.frame(bionj_upMm["edge.length"])
+branch_length_upMm$branch <- rownames(branch_length_upMm)
+branch_length_upMm <- inner_join(branch_length_upMm, edges_upMm, by = "branch")
+```
+
+```{r}
+sum(branch_length_upMm$edge.length)
+```
+
+
+
+```{r}
+edges_upMd <- as.data.frame(bionj_upMd["edge"])
+edges_upMd$branch <- rownames(edges_upMd)
+branch_length_upMd <- as.data.frame(bionj_upMd["edge.length"])
+branch_length_upMd$branch <- rownames(branch_length_upMd)
+branch_length_upMd <- inner_join(branch_length_upMd, edges_upMd, by = "branch")
+```
+
+```{r}
+sum(branch_length_upMd$edge.length)
+```
+
+
+```{r}
+edges_cons <- as.data.frame(bionj_highcons["edge"])
+edges_cons$branch <- rownames(edges_cons)
+branch_length_cons <- as.data.frame(bionj_highcons["edge.length"])
+branch_length_cons$branch <- rownames(branch_length_cons)
+branch_length_cons <- inner_join(branch_length_cons, edges_cons, by = "branch")
+```
+
+```{r}
+sum(branch_length_cons$edge.length)
+```
+
+
+
+```{r}
+edges_all <- as.data.frame(bionj_all["edge"])
+edges_all$branch <- rownames(edges_all)
+branch_length_all <- as.data.frame(bionj_all["edge.length"])
+branch_length_all$branch <- rownames(branch_length_all)
+branch_length_all <- inner_join(branch_length_all, edges_all, by = "branch")
+```
+
+```{r}
+sum(branch_length_all$edge.length)
+```
+
+
+
+#Spearman's Graphs
+##Note: using the correlations from average values for species with more than one replicate
+
+#Data Formating
+
+#All Genes
+#separating species points
+```{r}
+spear_data_hs <- as.data.frame(t(corr_avg[1:2,]))
+spear_data_rh <- as.data.frame(t(corr_avg[3:4,]))
+spear_data_mm <- as.data.frame(t(corr_avg[5:6,]))
+spear_data_bt <- as.data.frame(t(corr_avg[7:8,]))
+spear_data_md <- as.data.frame(t(corr_avg[9:10,]))
+```
+
+#adding collumn with divergence time between paired correlations
+```{r}
+spear_data_hs$Dist <- c(0,0,25,25,75,75,90,90,160,160,300,300)
+spear_data_rh$Dist <- c(25,25,0,0,75,75,90,90,160,160,300,300)
+spear_data_mm$Dist <- c(75,75,75,75,0,0,90,90,160,160,300,300)
+spear_data_bt$Dist <- c(90,90,90,90,90,90,0,0,160,160,300,300)
+spear_data_md$Dist <- c(160,160,160,160,160,160,160,160,0,0,300,300)
+```
+
+```{r}
+spear_data_hs <- (spear_data_hs[-c(1:2), ])
+spear_data_rh <- (spear_data_rh[-c(1:4), ])
+spear_data_mm <- (spear_data_mm[-c(1:6), ])
+spear_data_bt <- (spear_data_bt[-c(1:8), ])
+spear_data_md <- (spear_data_md[-c(1:10), ])
+```
+
+#separating into new data sets for each cell type
+```{r}
+spear_data_hs_PA <- spear_data_hs[c(1,3,5,7,9), c(1,3)]
+spear_data_rh_PA <- spear_data_rh[c(1,3,5,7), c(1,3)]
+spear_data_mm_PA <- spear_data_mm[c(1,3,5), c(1,3)]
+spear_data_bt_PA <- spear_data_bt[c(1,3), c(1,3)]
+spear_data_md_PA <- spear_data_md[1, c(1,3)]
+```
+
+```{r}
+colnames(spear_data_hs_PA) <- c("All_PA", "Dist")
+colnames(spear_data_rh_PA) <- c("All_PA", "Dist")
+colnames(spear_data_mm_PA) <- c("All_PA", "Dist")
+colnames(spear_data_bt_PA) <- c("All_PA", "Dist")
+colnames(spear_data_md_PA) <- c("All_PA", "Dist")
+```
+
+```{r}
+spear_data_hs_RS <- spear_data_hs[c(2,4,6,8,10), c(2,3)]
+spear_data_rh_RS <- spear_data_rh[c(2,4,6,8), c(2,3)]
+spear_data_mm_RS <- spear_data_mm[c(2,4,6), c(2,3)]
+spear_data_bt_RS <- spear_data_bt[c(2,4), c(2,3)]
+spear_data_md_RS <- spear_data_md[2, c(2,3)]
+```
+
+```{r}
+colnames(spear_data_hs_RS) <- c("All_RS", "Dist")
+colnames(spear_data_rh_RS) <- c("All_RS", "Dist")
+colnames(spear_data_mm_RS) <- c("All_RS", "Dist")
+colnames(spear_data_bt_RS) <- c("All_RS", "Dist")
+colnames(spear_data_md_RS) <- c("All_RS", "Dist")
+```
+
+#binding together all the species for each cell type separately
+```{r}
+spear_data_all_PA <- rbind(spear_data_hs_PA, spear_data_rh_PA, spear_data_mm_PA, spear_data_bt_PA, spear_data_md_PA)
+spear_data_all_PA$Group <- c("All_PA")
+colnames(spear_data_all_PA) <- c("Corr", "Dist", "Group")
+
+spear_data_all_RS <- rbind(spear_data_hs_RS, spear_data_rh_RS, spear_data_mm_RS, spear_data_bt_RS, spear_data_md_RS)
+spear_data_all_RS$Group <- c("All_RS")
+colnames(spear_data_all_RS) <- c("Corr", "Dist", "Group")
+```
+
+
+#Highly Conserved
+```{r}
+spear_data_cons_hs <- as.data.frame(t(corr_highcons[1:2,]))
+spear_data_cons_rh <- as.data.frame(t(corr_highcons[3:4,]))
+spear_data_cons_mm <- as.data.frame(t(corr_highcons[5:6,]))
+spear_data_cons_bt <- as.data.frame(t(corr_highcons[7:8,]))
+spear_data_cons_md <- as.data.frame(t(corr_highcons[9:10,]))
+```
+
+```{r}
+spear_data_cons_hs$Dist <- c(0,0,25,25,75,75,90,90,160,160,300,300)
+spear_data_cons_rh$Dist <- c(25,25,0,0,75,75,90,90,160,160,300,300)
+spear_data_cons_mm$Dist <- c(75,75,75,75,0,0,90,90,160,160,300,300)
+spear_data_cons_bt$Dist <- c(90,90,90,90,90,90,0,0,160,160,300,300)
+spear_data_cons_md$Dist <- c(160,160,160,160,160,160,160,160,0,0,300,300)
+```
+
+```{r}
+spear_data_cons_hs <- (spear_data_cons_hs[-c(1:2), ])
+spear_data_cons_rh <- (spear_data_cons_rh[-c(1:4), ])
+spear_data_cons_mm <- (spear_data_cons_mm[-c(1:6), ])
+spear_data_cons_bt <- (spear_data_cons_bt[-c(1:8), ])
+spear_data_cons_md <- (spear_data_cons_md[-c(1:10), ])
+```
+
+```{r}
+spear_data_cons_hs_PA <- spear_data_cons_hs[c(1,3,5,7,9), c(1,3)]
+spear_data_cons_rh_PA <- spear_data_cons_rh[c(1,3,5,7), c(1,3)]
+spear_data_cons_mm_PA <- spear_data_cons_mm[c(1,3,5), c(1,3)]
+spear_data_cons_bt_PA <- spear_data_cons_bt[c(1,3), c(1,3)]
+spear_data_cons_md_PA <- spear_data_cons_md[1, c(1,3)]
+```
+
+```{r}
+colnames(spear_data_cons_hs_PA) <- c("Cons_PA", "Dist")
+colnames(spear_data_cons_rh_PA) <- c("Cons_PA", "Dist")
+colnames(spear_data_cons_mm_PA) <- c("Cons_PA", "Dist")
+colnames(spear_data_cons_bt_PA) <- c("Cons_PA", "Dist")
+colnames(spear_data_cons_md_PA) <- c("Cons_PA", "Dist")
+```
+
+```{r}
+spear_data_cons_hs_RS <- spear_data_cons_hs[c(2,4,6,8,10), c(2,3)]
+spear_data_cons_rh_RS <- spear_data_cons_rh[c(2,4,6,8), c(2,3)]
+spear_data_cons_mm_RS <- spear_data_cons_mm[c(2,4,6), c(2,3)]
+spear_data_cons_bt_RS <- spear_data_cons_bt[c(2,4), c(2,3)]
+spear_data_cons_md_RS <- spear_data_cons_md[2, c(2,3)]
+```
+
+```{r}
+colnames(spear_data_cons_hs_RS) <- c("Cons_RS", "Dist")
+colnames(spear_data_cons_rh_RS) <- c("Cons_RS", "Dist")
+colnames(spear_data_cons_mm_RS) <- c("Cons_RS", "Dist")
+colnames(spear_data_cons_bt_RS) <- c("Cons_RS", "Dist")
+colnames(spear_data_cons_md_RS) <- c("Cons_RS", "Dist")
+```
+
+```{r}
+spear_data_cons_PA <- rbind(spear_data_cons_hs_PA, spear_data_cons_rh_PA, spear_data_cons_mm_PA, spear_data_cons_bt_PA, spear_data_cons_md_PA)
+spear_data_cons_PA$Group <- c("Cons_PA")
+colnames(spear_data_cons_PA) <- c("Corr", "Dist", "Group")
+
+spear_data_cons_RS <- rbind(spear_data_cons_hs_RS, spear_data_cons_rh_RS, spear_data_cons_mm_RS, spear_data_cons_bt_RS, spear_data_cons_md_RS)
+spear_data_cons_RS$Group <- c("Cons_RS")
+colnames(spear_data_cons_RS) <- c("Corr", "Dist", "Group")
+```
+
+#upMm
+```{r}
+spear_data_upMm_hs <- as.data.frame(t(corr_upMm_avg[1:2,]))
+spear_data_upMm_rh <- as.data.frame(t(corr_upMm_avg[3:4,]))
+spear_data_upMm_mm <- as.data.frame(t(corr_upMm_avg[5:6,]))
+spear_data_upMm_bt <- as.data.frame(t(corr_upMm_avg[7:8,]))
+spear_data_upMm_md <- as.data.frame(t(corr_upMm_avg[9:10,]))
+```
+
+```{r}
+spear_data_upMm_hs$Dist <- c(0,0,25,25,75,75,90,90,160,160,300,300)
+spear_data_upMm_rh$Dist <- c(25,25,0,0,75,75,90,90,160,160,300,300)
+spear_data_upMm_mm$Dist <- c(75,75,75,75,0,0,90,90,160,160,300,300)
+spear_data_upMm_bt$Dist <- c(90,90,90,90,90,90,0,0,160,160,300,300)
+spear_data_upMm_md$Dist <- c(160,160,160,160,160,160,160,160,0,0,300,300)
+
+```
+
+```{r}
+spear_data_upMm_hs <- (spear_data_upMm_hs[-c(1:2), ])
+spear_data_upMm_rh <- (spear_data_upMm_rh[-c(1:4), ])
+spear_data_upMm_mm <- (spear_data_upMm_mm[-c(1:6), ])
+spear_data_upMm_bt <- (spear_data_upMm_bt[-c(1:8), ])
+spear_data_upMm_md <- (spear_data_upMm_md[-c(1:10), ])
+```
+
+```{r}
+spear_data_upMm_hs_PA <- spear_data_upMm_hs[c(1,3,5,7,9), c(1,3)]
+spear_data_upMm_rh_PA <- spear_data_upMm_rh[c(1,3,5,7), c(1,3)]
+spear_data_upMm_mm_PA <- spear_data_upMm_mm[c(1,3,5), c(1,3)]
+spear_data_upMm_bt_PA <- spear_data_upMm_bt[c(1,3), c(1,3)]
+spear_data_upMm_md_PA <- spear_data_upMm_md[1, c(1,3)]
+```
+
+```{r}
+colnames(spear_data_upMm_hs_PA) <- c("UpMm_PA", "Dist")
+colnames(spear_data_upMm_rh_PA) <- c("UpMm_PA", "Dist")
+colnames(spear_data_upMm_mm_PA) <- c("UpMm_PA", "Dist")
+colnames(spear_data_upMm_bt_PA) <- c("UpMm_PA", "Dist")
+colnames(spear_data_upMm_md_PA) <- c("UpMm_PA", "Dist")
+```
+
+```{r}
+spear_data_upMm_hs_RS <- spear_data_upMm_hs[c(2,4,6,8,10), c(2,3)]
+spear_data_upMm_rh_RS <- spear_data_upMm_rh[c(2,4,6,8), c(2,3)]
+spear_data_upMm_mm_RS <- spear_data_upMm_mm[c(2,4,6), c(2,3)]
+spear_data_upMm_bt_RS <- spear_data_upMm_bt[c(2,4), c(2,3)]
+spear_data_upMm_md_RS <- spear_data_upMm_md[2, c(2,3)]
+```
+
+```{r}
+colnames(spear_data_upMm_hs_RS) <- c("UpMm_RS", "Dist")
+colnames(spear_data_upMm_rh_RS) <- c("UpMm_RS", "Dist")
+colnames(spear_data_upMm_mm_RS) <- c("UpMm_RS", "Dist")
+colnames(spear_data_upMm_bt_RS) <- c("UpMm_RS", "Dist")
+colnames(spear_data_upMm_md_RS) <- c("UpMm_RS", "Dist")
+```
+
+```{r}
+spear_data_upMm_PA <- rbind(spear_data_upMm_hs_PA, spear_data_upMm_rh_PA, spear_data_upMm_mm_PA, spear_data_upMm_bt_PA, spear_data_upMm_md_PA)
+spear_data_upMm_PA$Group <- c("UpMm_PA")
+colnames(spear_data_upMm_PA) <- c("Corr", "Dist", "Group")
+
+spear_data_upMm_RS <- rbind(spear_data_upMm_hs_RS, spear_data_upMm_rh_RS, spear_data_upMm_mm_RS, spear_data_upMm_bt_RS, spear_data_upMm_md_RS)
+spear_data_upMm_RS$Group <- c("UpMm_RS")
+colnames(spear_data_upMm_RS) <- c("Corr", "Dist", "Group")
+```
+
+#upMd
+```{r}
+spear_data_upMd_hs <- as.data.frame(t(corr_upMd_avg[1:2,]))
+spear_data_upMd_rh <- as.data.frame(t(corr_upMd_avg[3:4,]))
+spear_data_upMd_mm <- as.data.frame(t(corr_upMd_avg[5:6,]))
+spear_data_upMd_bt <- as.data.frame(t(corr_upMd_avg[7:8,]))
+spear_data_upMd_md <- as.data.frame(t(corr_upMd_avg[9:10,]))
+```
+
+```{r}
+spear_data_upMd_hs$Dist <- c(0,0,25,25,75,75,90,90,160,160,300,300)
+spear_data_upMd_rh$Dist <- c(25,25,0,0,75,75,90,90,160,160,300,300)
+spear_data_upMd_mm$Dist <- c(75,75,75,75,0,0,90,90,160,160,300,300)
+spear_data_upMd_bt$Dist <- c(90,90,90,90,90,90,0,0,160,160,300,300)
+spear_data_upMd_md$Dist <- c(160,160,160,160,160,160,160,160,0,0,300,300)
+
+```
+
+```{r}
+spear_data_upMd_hs <- (spear_data_upMd_hs[-c(1:2), ])
+spear_data_upMd_rh <- (spear_data_upMd_rh[-c(1:4), ])
+spear_data_upMd_mm <- (spear_data_upMd_mm[-c(1:6), ])
+spear_data_upMd_bt <- (spear_data_upMd_bt[-c(1:8), ])
+spear_data_upMd_md <- (spear_data_upMd_md[-c(1:10), ])
+```
+
+```{r}
+spear_data_upMd_hs_PA <- spear_data_upMd_hs[c(1,3,5,7,9), c(1,3)]
+spear_data_upMd_rh_PA <- spear_data_upMd_rh[c(1,3,5,7), c(1,3)]
+spear_data_upMd_mm_PA <- spear_data_upMd_mm[c(1,3,5), c(1,3)]
+spear_data_upMd_bt_PA <- spear_data_upMd_bt[c(1,3), c(1,3)]
+spear_data_upMd_md_PA <- spear_data_upMd_md[1, c(1,3)]
+```
+
+```{r}
+colnames(spear_data_upMd_hs_PA) <- c("UpMd_PA", "Dist")
+colnames(spear_data_upMd_rh_PA) <- c("UpMd_PA", "Dist")
+colnames(spear_data_upMd_mm_PA) <- c("UpMd_PA", "Dist")
+colnames(spear_data_upMd_bt_PA) <- c("UpMd_PA", "Dist")
+colnames(spear_data_upMd_md_PA) <- c("UpMd_PA", "Dist")
+```
+
+```{r}
+spear_data_upMd_hs_RS <- spear_data_upMd_hs[c(2,4,6,8,10), c(2,3)]
+spear_data_upMd_rh_RS <- spear_data_upMd_rh[c(2,4,6,8), c(2,3)]
+spear_data_upMd_mm_RS <- spear_data_upMd_mm[c(2,4,6), c(2,3)]
+spear_data_upMd_bt_RS <- spear_data_upMd_bt[c(2,4), c(2,3)]
+spear_data_upMd_md_RS <- spear_data_upMd_md[2, c(2,3)]
+```
+
+```{r}
+colnames(spear_data_upMd_hs_RS) <- c("UpMd_RS", "Dist")
+colnames(spear_data_upMd_rh_RS) <- c("UpMd_RS", "Dist")
+colnames(spear_data_upMd_mm_RS) <- c("UpMd_RS", "Dist")
+colnames(spear_data_upMd_bt_RS) <- c("UpMd_RS", "Dist")
+colnames(spear_data_upMd_md_RS) <- c("UpMd_RS", "Dist")
+```
+
+```{r}
+spear_data_upMd_PA <- rbind(spear_data_upMd_hs_PA, spear_data_upMd_rh_PA, spear_data_upMd_mm_PA, spear_data_upMd_bt_PA, spear_data_upMd_md_PA)
+spear_data_upMd_PA$Group <- c("UpMd_PA")
+colnames(spear_data_upMd_PA) <- c("Corr", "Dist", "Group")
+
+spear_data_upMd_RS <- rbind(spear_data_upMd_hs_RS, spear_data_upMd_rh_RS, spear_data_upMd_mm_RS, spear_data_upMd_bt_RS, spear_data_upMd_md_RS)
+spear_data_upMd_RS$Group <- c("UpMd_RS")
+colnames(spear_data_upMd_RS) <- c("Corr", "Dist", "Group")
+```
+
+#binding all four gene group data into one for each cell type 
+```{r}
+spear_data_graph_PA <- rbind(spear_data_all_PA, spear_data_cons_PA, spear_data_upMm_PA, spear_data_upMd_PA)
+
+spear_data_graph_RS <- rbind(spear_data_all_RS, spear_data_cons_RS, spear_data_upMm_RS, spear_data_upMd_RS)
+```
+
+```{r}
+colors <- c("gray58", "black", "lightsteelblue", "mediumblue")
+```
+
+```{r}
+ggplot(spear_data_graph_PA, aes(Dist, Corr, colour = Group)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm",
+              formula = y ~ poly(x, 2), se = FALSE, lwd = 2.5) +
+  scale_color_manual(values = colors) +   
+  theme_classic() + 
+  ggtitle("Spearmans Correlations Pachytene") +
+  ylab("Spearman's p") +
+  xlab("Divergence Time")
+
+ggplot(spear_data_graph_RS, aes(Dist, Corr, colour = Group)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm",
+              formula = y ~ poly(x, 2), se = FALSE, lwd = 2.5) +
+  scale_color_manual(values = colors) +   
+  theme_classic() + 
+  ggtitle("Spearmans Correlations Round Spermatids") +
+  ylab("Spearman's p") +
+  xlab("Divergence Time")
+```
+
+#Bootstrapping for branch lengths
+#general notes- bootstrapping 1000 reps and subsampling to 50% of the original gene set each time
+#All Genes
+```{r}
+# Bootstrapping
+bootstrap.reps <- 1000
+set.seed(88)
+branch_trees_all <- list(); 
+length(branch_trees_all) <- bootstrap.reps
+branch_lengths_all <- list(); 
+length(branch_lengths_all) <- bootstrap.reps
+dim <- round(((dim(zFPKM_sixspecies_2)[1])/2), 0)
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_2[sample(x = 1:dim, size = dim, replace = TRUE), ] 
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("gg_pachy_zFPKM","gg_rs_zFPKM"), 
+                    resolve.root = TRUE)
+  branch_trees_all[[i]] <- this.tree
+  branch_lengths_all[[i]] <- sum(as.data.frame(this.tree[2]))
+}
+```
+
+```{r}
+branch_lengths_all_data <- t(as.data.frame(branch_lengths_all))
+colnames(branch_lengths_all_data) <- c("TotalLength")
+rownames(branch_lengths_all_data) <- 1:1000
+branch_lengths_all_data <- as.data.frame(branch_lengths_all_data)
+branch_lengths_all_data <- branch_lengths_all_data %>% mutate(Group = "All")
+```
+
+#can plot a few trees to view for sanity check if desired
+```{r}
+plot(branch_trees_all[[1]])
+plot(branch_trees_all[[2]])
+plot(branch_trees_all[[30]])
+plot(branch_trees_all[[500]])
+```
+
+#Highly Conserved Gene Group
+```{r}
+bootstrap.reps <- 1000
+set.seed(88)
+branch_trees_cons <- list(); 
+length(branch_trees_cons) <- bootstrap.reps
+branch_lengths_cons <- list(); 
+length(branch_lengths_cons) <- bootstrap.reps
+dim <- round(((dim(zFPKM_sixspecies_highcons)[1])/2), 0)
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_highcons[sample(x = 1:dim, size = dim, replace = TRUE), ] 
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("gg_pachy_zFPKM","gg_rs_zFPKM"), 
+                    resolve.root = TRUE)
+  branch_trees_cons[[i]] <- this.tree
+  branch_lengths_cons[[i]] <- sum(as.data.frame(this.tree[2]))
+}
+```
+
+```{r}
+branch_lengths_cons_data <- t(as.data.frame(branch_lengths_cons))
+colnames(branch_lengths_cons_data) <- c("TotalLength")
+rownames(branch_lengths_cons_data) <- 1:1000
+branch_lengths_cons_data <- as.data.frame(branch_lengths_cons_data)
+branch_lengths_cons_data <- branch_lengths_cons_data %>% mutate(Group = "Conserved")
+```
+
+```{r}
+plot(branch_trees_cons[[1]])
+plot(branch_trees_cons[[2]])
+plot(branch_trees_cons[[30]])
+plot(branch_trees_cons[[500]])
+```
+
+#Genes with higher expression in mouse
+```{r}
+bootstrap.reps <- 1000
+set.seed(88)
+branch_trees_upMm <- list(); 
+length(branch_trees_upMm) <- bootstrap.reps
+branch_lengths_upMm <- list(); 
+length(branch_lengths_upMm) <- bootstrap.reps
+dim <- round(((dim(zFPKM_sixspecies_upMm)[1])/2), 0)
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_upMm[sample(x = 1:dim, size = dim, replace = TRUE), ] 
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("gg_pachy_zFPKM","gg_rs_zFPKM"), 
+                    resolve.root = TRUE)
+  branch_trees_upMm[[i]] <- this.tree
+  branch_lengths_upMm[[i]] <- sum(as.data.frame(this.tree[2]))
+}
+```
+
+```{r}
+branch_lengths_upMm_data <- t(as.data.frame(branch_lengths_upMm))
+colnames(branch_lengths_upMm_data) <- c("TotalLength")
+rownames(branch_lengths_upMm_data) <- 1:1000
+branch_lengths_upMm_data <- as.data.frame(branch_lengths_upMm_data)
+branch_lengths_upMm_data <- branch_lengths_upMm_data %>% mutate(Group = "UpMm")
+```
+
+```{r}
+plot(branch_trees_upMm[[1]])
+plot(branch_trees_upMm[[2]])
+plot(branch_trees_upMm[[30]])
+plot(branch_trees_upMm[[500]])
+```
+
+#Genes with higher expression in opossum
+```{r}
+bootstrap.reps <- 1000
+set.seed(88)
+branch_trees_upMd <- list(); 
+length(branch_trees_upMd) <- bootstrap.reps
+branch_lengths_upMd <- list(); 
+length(branch_lengths_upMd) <- bootstrap.reps
+dim <- round(((dim(zFPKM_sixspecies_upMd)[1])/2), 0)
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_upMd[sample(x = 1:dim, size = dim, replace = TRUE), ] 
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("gg_pachy_zFPKM","gg_rs_zFPKM"), 
+                    resolve.root = TRUE)
+  branch_trees_upMd[[i]] <- this.tree
+  branch_lengths_upMd[[i]] <- sum(as.data.frame(this.tree[2]))
+}
+```
+
+```{r}
+branch_lengths_upMd_data <- t(as.data.frame(branch_lengths_upMd))
+colnames(branch_lengths_upMd_data) <- c("TotalLength")
+rownames(branch_lengths_upMd_data) <- 1:1000
+branch_lengths_upMd_data <- as.data.frame(branch_lengths_upMd_data)
+branch_lengths_upMd_data <- branch_lengths_upMd_data %>% mutate(Group = "UpOp")
+```
+
+```{r}
+plot(branch_trees_upMd[[1]])
+plot(branch_trees_upMd[[2]])
+plot(branch_trees_upMd[[30]])
+plot(branch_trees_upMd[[500]])
+```
+
+#combining branch lengths from all four groups
+```{r}
+boot_branch_lengths <- rbind(branch_lengths_all_data, branch_lengths_cons_data, branch_lengths_upMm_data, branch_lengths_upMd_data)
+```
+
+```{r}
+colors <- c("gray58", "black", "mediumblue", "lightsteelblue")
+```
+
+```{r}
+ggplot(data = boot_branch_lengths , aes(x = Group, y = TotalLength, fill = Group)) + geom_boxplot(color = "grey35", fill = colors, lwd = 1) + ggtitle("Bootstrap Branch Lengths")  + theme_classic() 
+
+```
+
+#Statistics
+```{r}
+library(dunn.test)
+```
+
+```{r}
+summary(fm1 <- aov(TotalLength ~ Group, data = boot_branch_lengths))
+TukeyHSD(fm1, "Group", ordered = TRUE)
+plot(TukeyHSD(fm1, "Group"))
+
+kruskal.test(TotalLength ~ Group, data = boot_branch_lengths)
+
+dunn.test_upMm <- as.data.frame(dunn.test(boot_branch_lengths$TotalLength, boot_branch_lengths$Group,
+         method = "bonferroni", wrap = TRUE))
+```
+
+#Bootstrapping for Node Arrangement
+#code modified from Murat et al. (2023) Nature. (https://doi.org/10.1038/s41586-022-05547-7)
+#All Genes
+```{r}
+colnames(zFPKM_sixspecies_2) <- c("Hsap 1 S", "Hsap 1 R", "Hsap 2 S", "Hsap 2 R",  "Hsap 3 S", "Hsap 3 R", "Mmul 1 S", "Mmul 1 R",  "Mmul 2 S", "Mmul 2 R", "Mmus 1 S", "Mmus 1 R", "Mmus 2 S", "Mmus 2 R", "Btau S", "Btau R", "Mdom 1 S", "Mdom 1 R", "Mdom 2 S", "Mdom 2 R", "Ggal S", "Ggal R")
+
+# Bootstrapping
+bootstrap.reps <- 1000
+set.seed(123)
+mytrees <- list(); 
+length(mytrees) <- bootstrap.reps
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_2[sample(x = 1:dim(zFPKM_sixspecies_2)[1], size = dim(zFPKM_sixspecies_2)[1], replace = TRUE), ] # bootstrap gene indexes (sample with replacement)
+  stopifnot(dim(sampled.data)[1] == dim(zFPKM_sixspecies_2)[1])
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("Ggal S","Ggal R"), 
+                    resolve.root = TRUE)
+  mytrees[[i]] <- this.tree
+}
+
+boot <- NULL
+clad <- NULL
+
+# Parsing trees
+Sum <- c()
+for(i in 1:bootstrap.reps) {
+  
+  boot <- prop.clades(mytrees[[i]], part = prop.part(mytrees, check.labels = T),rooted = F)
+  Sum <- c(Sum,sum(boot))
+}
+
+Sum %>%
+  as.data.frame() %>% 
+  rownames_to_column() %>%
+  dplyr::rename(Tree_ID = rowname) %>%
+  dplyr::rename(Sum = ".") %>%
+  arrange( desc( Sum )) -> Sum_ID
+
+Priority <- 1
+boot <- prop.clades( mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] , part = prop.part(mytrees, check.labels = T),rooted = F) # get bootstrap values from the list of trees
+
+# Assigning colors to nodes according to boostrap values
+for (i in 1:length(boot)) {
+  mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $label_[i] <- boot[i]/bootstrap.reps
+  
+  if (!is.na(boot[i]) & boot[i]/bootstrap.reps > 0.9) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "white"
+  } else if(boot[i]/bootstrap.reps > 0.7) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slategray2"
+  } else if(boot[i]/bootstrap.reps > 0.5) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slateblue1"
+  } else {
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "purple4"
+  }
+}
+
+# Plotting tree with bootstrap value
+node_boot_all <- plot (mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] ,cex=1,edge.width = 2,label.offset=0.01)
+add.scale.bar(x=0.0,y=1.3,length=0.1)
+nodelabels(pch = 21, col = "black", bg = mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $boot.color, cex = 1) 
+```
+
+
+#Highly Conserved Genes
+```{r}
+
+colnames(zFPKM_sixspecies_highcons) <- c("Hsap 1 S", "Hsap 1 R", "Hsap 2 S", "Hsap 2 R",  "Hsap 3 S", "Hsap 3 R", "Mmul 1 S", "Mmul 1 R",  "Mmul 2 S", "Mmul 2 R", "Mmus 1 S", "Mmus 1 R", "Mmus 2 S", "Mmus 2 R", "Btau S", "Btau R", "Mdom 1 S", "Mdom 1 R", "Mdom 2 S", "Mdom 2 R", "Ggal S", "Ggal R")
+
+
+# Bootstrapping
+bootstrap.reps <- 1000
+set.seed(123)
+mytrees <- list(); 
+length(mytrees) <- bootstrap.reps
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_highcons[sample(x = 1:dim(zFPKM_sixspecies_highcons)[1], size = dim(zFPKM_sixspecies_highcons)[1], replace = TRUE), ] # bootstrap gene indexes (sample with replacement)
+  stopifnot(dim(sampled.data)[1] == dim(zFPKM_sixspecies_highcons)[1])
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("Ggal S","Ggal R"), 
+                    resolve.root = TRUE)
+  mytrees[[i]] <- this.tree
+}
+
+boot <- NULL
+clad <- NULL
+
+# Parsing trees
+Sum <- c()
+for(i in 1:bootstrap.reps) {
+  
+  boot <- prop.clades(mytrees[[i]], part = prop.part(mytrees, check.labels = T),rooted = F)
+  Sum <- c(Sum,sum(boot))
+}
+
+Sum %>%
+  as.data.frame() %>% 
+  rownames_to_column() %>%
+  dplyr::rename(Tree_ID = rowname) %>%
+  dplyr::rename(Sum = ".") %>%
+  arrange( desc( Sum )) -> Sum_ID
+
+Priority <- 1
+boot <- prop.clades( mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] , part = prop.part(mytrees, check.labels = T),rooted = F) # get bootstrap values from the list of trees
+
+# Assigning colors to nodes according to boostrap values
+for (i in 1:length(boot)) {
+  mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $label_[i] <- boot[i]/bootstrap.reps
+  
+  if (!is.na(boot[i]) & boot[i]/bootstrap.reps > 0.9) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "white"
+  } else if(boot[i]/bootstrap.reps > 0.7) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slategray2"
+  } else if(boot[i]/bootstrap.reps > 0.5) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slateblue1"
+  } else {
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "purple4"
+  }
+}
+
+# Plotting tree with bootstrap value
+node_boot_cons <- plot (mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] ,cex=1,edge.width = 2,label.offset=0.01)
+add.scale.bar(x=0.0,y=1.3,length=0.1)
+nodelabels(pch = 21, col = "black", bg = mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $boot.color, cex = 1) 
+```
+
+#UpMm
+```{r}
+
+colnames(zFPKM_sixspecies_upMm) <- c("Hsap 1 S", "Hsap 1 R", "Hsap 2 S", "Hsap 2 R",  "Hsap 3 S", "Hsap 3 R", "Mmul 1 S", "Mmul 1 R",  "Mmul 2 S", "Mmul 2 R", "Mmus 1 S", "Mmus 1 R", "Mmus 2 S", "Mmus 2 R", "Btau S", "Btau R", "Mdom 1 S", "Mdom 1 R", "Mdom 2 S", "Mdom 2 R", "Ggal S", "Ggal R")
+
+
+# Bootstrapping
+bootstrap.reps <- 1000
+set.seed(123)
+mytrees <- list(); 
+length(mytrees) <- bootstrap.reps
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_upMm[sample(x = 1:dim(zFPKM_sixspecies_upMm)[1], size = dim(zFPKM_sixspecies_upMm)[1], replace = TRUE), ] # bootstrap gene indexes (sample with replacement)
+  stopifnot(dim(sampled.data)[1] == dim(zFPKM_sixspecies_upMm)[1])
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("Ggal S","Ggal R"), 
+                    resolve.root = TRUE)
+  mytrees[[i]] <- this.tree
+}
+
+boot <- NULL
+clad <- NULL
+
+# Parsing trees
+Sum <- c()
+for(i in 1:bootstrap.reps) {
+  
+  boot <- prop.clades(mytrees[[i]], part = prop.part(mytrees, check.labels = T),rooted = F)
+  Sum <- c(Sum,sum(boot))
+}
+
+Sum %>%
+  as.data.frame() %>% 
+  rownames_to_column() %>%
+  dplyr::rename(Tree_ID = rowname) %>%
+  dplyr::rename(Sum = ".") %>%
+  arrange( desc( Sum )) -> Sum_ID
+
+Priority <- 1
+boot <- prop.clades( mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] , part = prop.part(mytrees, check.labels = T),rooted = F) # get bootstrap values from the list of trees
+
+# Assigning colors to nodes according to boostrap values
+for (i in 1:length(boot)) {
+  mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $label_[i] <- boot[i]/bootstrap.reps
+  
+  if (!is.na(boot[i]) & boot[i]/bootstrap.reps > 0.9) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "white"
+  } else if(boot[i]/bootstrap.reps > 0.7) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slategray2"
+  } else if(boot[i]/bootstrap.reps > 0.5) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slateblue1"
+  } else {
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "purple4"
+  }
+}
+
+
+# Plotting tree with bootstrap value
+node_boot_upMm <- plot (mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] ,cex=1,edge.width = 2,label.offset=0.01)
+add.scale.bar(x=0.0,y=1.3,length=0.1)
+nodelabels(pch = 21, col = "black", bg = mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $boot.color, cex = 1) 
+```
+
+#upMd
+```{r}
+# Bootstrapping
+colnames(zFPKM_sixspecies_upMd) <- c("Hsap 1 S", "Hsap 1 R", "Hsap 2 S", "Hsap 2 R",  "Hsap 3 S", "Hsap 3 R", "Mmul 1 S", "Mmul 1 R",  "Mmul 2 S", "Mmul 2 R", "Mmus 1 S", "Mmus 1 R", "Mmus 2 S", "Mmus 2 R", "Btau S", "Btau R", "Mdom 1 S", "Mdom 1 R", "Mdom 2 S", "Mdom 2 R", "Ggal S", "Ggal R")
+
+bootstrap.reps <- 1000
+set.seed(123)
+mytrees <- list(); 
+length(mytrees) <- bootstrap.reps
+
+for(i in 1:bootstrap.reps) {
+  sampled.data <- zFPKM_sixspecies_upMd[sample(x = 1:dim(zFPKM_sixspecies_upMd)[1], size = dim(zFPKM_sixspecies_upMd)[1], replace = TRUE), ] # bootstrap gene indexes (sample with replacement)
+  stopifnot(dim(sampled.data)[1] == dim(zFPKM_sixspecies_upMd)[1])
+  this.tree <- root(bionj(1 - cor(sampled.data, method = "spearman", use = "everything")), 
+                    outgroup = c("Ggal S","Ggal R"), 
+                    resolve.root = TRUE)
+  mytrees[[i]] <- this.tree
+}
+
+boot <- NULL
+clad <- NULL
+
+# Parsing trees
+Sum <- c()
+for(i in 1:bootstrap.reps) {
+  
+  boot <- prop.clades(mytrees[[i]], part = prop.part(mytrees, check.labels = T),rooted = F)
+  Sum <- c(Sum,sum(boot))
+}
+
+Sum %>%
+  as.data.frame() %>% 
+  rownames_to_column() %>%
+  dplyr::rename(Tree_ID = rowname) %>%
+  dplyr::rename(Sum = ".") %>%
+  arrange( desc( Sum )) -> Sum_ID
+
+Priority <- 1
+boot <- prop.clades( mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] , part = prop.part(mytrees, check.labels = T),rooted = F) # get bootstrap values from the list of trees
+
+# Assigning colors to nodes according to boostrap values
+for (i in 1:length(boot)) {
+  mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $label_[i] <- boot[i]/bootstrap.reps
+  
+  if (!is.na(boot[i]) & boot[i]/bootstrap.reps > 0.9) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "white"
+  } else if(boot[i]/bootstrap.reps > 0.7) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slategray2"
+  } else if(boot[i]/bootstrap.reps > 0.5) { 
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "slateblue1"
+  } else {
+    mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]]$boot.color[i] <- "purple4"
+  }
+}
+
+# Plotting tree with bootstrap value
+node_boot_upMd <- plot (mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] ,cex=1,edge.width = 2,label.offset=0.01)
+add.scale.bar(x=0.0,y=1.3,length=0.1)
+nodelabels(pch = 21, col = "black", bg = mytrees[[ as.integer(Sum_ID[Priority,"Tree_ID"]) ]] $boot.color, cex = 1) 
+```
+
+
+
+
+
