@@ -1,0 +1,267 @@
+#general notes:
+#upMm =  genes with higher expression in mouse
+#upMd = genes with higher expression in opossum
+#highcons = genes highly conserved expression
+#o2o = All genes used (genes with one to one orthology)
+
+
+
+
+#Prep for PhastCons and PhyloP
+# make bed files for gene info in R.  
+```{r}
+library("biomaRt")
+library(dplyr)
+library(data.table)
+```
+
+```{r}
+upMm <- read.table("upMm_genes.txt", header = T)
+upMd <- read.table("upMd_genes.txt", header = T)
+highcons <- read.table("HighCons_genes.txt", header = T)
+o2o <- read.table("OneToOne_genes.txt", header = T)
+```
+
+```{r}
+mart=useMart("ensembl",host="https://may2021.archive.ensembl.org", dataset = "mmusculus_gene_ensembl")
+
+
+tss <- getBM(attributes = c("ensembl_gene_id", "chromosome_name",
+                            "transcript_start", "transcript_end", "strand",
+                            "transcription_start_site", "transcript_length",
+                            "ensembl_transcript_id", "external_gene_name"),
+             mart = mart)
+```
+
+#filter for longest transcript (written with Delaney Farris)
+```{r}
+#collect unique gene names from the ensembl gene name column 
+unique_genes <- unique(tss$ensembl_gene_id)
+```
+
+```{r}
+#create a function longest_transcript:
+#input: a subset of biomart table of a single ensembl gene, with all transcripts associated with that gene id
+#output: a table with a single row associated with the longest transcript 
+
+longest_transcript <- function(biomart_table) {
+  biomart_table[order(biomart_table$transcript_length,decreasing=TRUE),][1,]
+}
+
+#generate a new empty table to add rows to
+longest_transcript_table <- data.frame(matrix(ncol = 9, nrow = 0))
+colnames(longest_transcript_table) <- c('ensembl_gene_id', 'chromosome', 'start', 'end', 'strand', 'transcriptional_startsite', 'transcript_length', 'ensembl_transcript_id', 'gene_name')
+
+#iterate through unique genes, perform "longest_transcript" function, append each gene to the table "longest_transcript_table"
+for (gene in unique_genes) {
+  subset_table <- tss[tss$ensembl_gene_id == gene, ]
+  longest_transcript_table <- rbind(longest_transcript_table, longest_transcript(subset_table))
+}
+
+#sanity check: the final table should have as many rows as unique genes
+length(unique_genes) == length(longest_transcript_table$transcript_start)
+```
+
+#make tables of biomart info for each of the gene groups
+```{r}
+tss_upMd <- inner_join(longest_transcript_table, upMd, by = c("ensembl_gene_id" = "Mouse_Gene"))
+tss_upMm <- inner_join(longest_transcript_table, upMm, by = c("ensembl_gene_id" = "Mouse_Gene"))
+tss_o2o <- inner_join(longest_transcript_table, new_o2o, by = c("ensembl_gene_id" = "Mouse_Gene"))
+tss_highcons <- inner_join(longest_transcript_table, Pst_cons, by = c("ensembl_gene_id" = "Mouse_Gene"))
+```
+
+
+#for +-1 KB from TSS
+```{r}
+tss_upMd_mod <- tss_upMd[, c(2, 6, 1)]
+
+tss_upMd_mod$up1kb <- (tss_upMd_mod$transcription_start_site - 1000) 
+tss_upMd_mod$down1kb <- (tss_upMd_mod$transcription_start_site + 1000) 
+```
+
+```{r}
+tss_upMd_mod <- tss_upMd_mod[, c(1, 4:5, 2:3)]
+```
+
+```{r}
+tss_upMm_mod <- tss_upMm[, c(2, 6, 1)]
+
+tss_upMm_mod$up1kb <- (tss_upMm_mod$transcription_start_site - 1000) 
+tss_upMm_mod$down1kb <- (tss_upMm_mod$transcription_start_site + 1000) 
+```
+
+```{r}
+tss_upMm_mod <- tss_upMm_mod[, c(1, 4:5, 2:3)]
+```
+ 
+```{r}
+tss_o2o_mod <- tss_o2o[, c(2, 6, 1)]
+
+tss_o2o_mod$up1kb <- (tss_o2o_mod$transcription_start_site - 1000) 
+tss_o2o_mod$down1kb <- (tss_o2o_mod$transcription_start_site + 1000) 
+```
+
+```{r}
+tss_o2o_mod <- tss_o2o_mod[, c(1, 4:5, 2:3)]
+```
+
+```{r}
+tss_highcons_mod <- tss_highcons[, c(2, 6, 1)]
+
+tss_highcons_mod$up1kb <- (tss_highcons_mod$transcription_start_site - 1000) 
+tss_highcons_mod$down1kb <- (tss_highcons_mod$transcription_start_site + 1000) 
+```
+
+```{r}
+tss_highcons_mod <- tss_highcons_mod[, c(1, 4:5, 2:3)]
+```
+
+```{r}
+colnames(tss_upMd_mod) <- c('chrom', 'chromStart', 'chromEnd', 'TSS', 'Gene_ID')
+colnames(tss_upMm_mod) <- c('chrom', 'chromStart', 'chromEnd', 'TSS', 'Gene_ID')
+colnames(tss_o2o_mod) <- c('chrom', 'chromStart', 'chromEnd', 'TSS', 'Gene_ID')
+colnames(tss_highcons_mod) <- c('chrom', 'chromStart', 'chromEnd', 'TSS', 'Gene_ID')
+```
+
+```{r}
+tss_upMd_mod <- tss_upMd_mod[ , -c(5)]
+tss_upMm_mod <- tss_upMm_mod[ , -c(5)]
+tss_o2o_mod <- tss_o2o_mod[ , -c(5)]
+tss_highcons_mod <- tss_highcons_mod[ , -c(5)]
+```
+
+```{r}
+setwd("~/Folder")
+
+write.table(tss_highcons_mod, "tss_highcons_mod.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+write.table(tss_o2o_mod, "tss_o2o.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+write.table(tss_upMd_mod, "tss_upMd_mod.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+write.table(tss_upMm_mod, "tss_upMm_mod.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+```
+
+#Phastcons analysis
+#in Linux
+
+#get phastcons scores
+for phastcons
+ftp> cd goldenPath/mm39/phastCons35way
+ftp> get mm39.35way.phastCons.bw
+
+```{r}
+bigWigAverageOverBed mm39.phastCons35way.bw tss_upMd_mod_chrom.bed -bedOut=tss_upMd_mod_out.bed tss_upMd_mod_out.tab
+
+bigWigAverageOverBed mm39.phastCons35way.bw tss_upMm_mod_chrom.bed -bedOut=tss_upMm_mod_out.bed tss_upMm_mod_out.tab
+
+bigWigAverageOverBed mm39.phastCons35way.bw tss_o2o_mod_chrom.bed -bedOut=tss_o2o_mod_out.bed tss_o2o_out.tab
+
+bigWigAverageOverBed mm39.phastCons35way.bw tss_highcons_mod_chrom.bed -bedOut=tss_highcons_mod_out.bed tss_highcons_mod_out.tab
+
+```
+
+#PhyloP analysis
+#in Linux
+
+#for phyloP scores
+ftp> cd goldenPath/mm39/phyloP35way
+ftp> get mm39.phyloP35way.bw
+
+#phyloP
+```{r}
+bigWigAverageOverBed mm39.phyloP35way.bw tss_upMd_mod_chrom.bed -bedOut=tss_upMd_mod_out_phyloP.bed tss_upMd_mod_out_phyloP.tab
+
+bigWigAverageOverBed mm39.phyloP35way.bw tss_upMm_mod_chrom.bed -bedOut=tss_upMm_mod_out_phyloP.bed tss_upMm_mod_out_phyloP.tab
+
+bigWigAverageOverBed mm39.phyloP35way.bw tss_o2o_mod_chrom.bed -bedOut=tss_o2o_mod_out_phyloP.bed tss_o2o_out_phyloP.tab
+
+bigWigAverageOverBed mm39.phyloP35way.bw tss_highcons_mod_chrom.bed -bedOut=tss_highcons_mod_out_phyloP.bed tss_highcons_mod_out_phyloP.tab
+```
+
+#Back in R for visualizing and stats
+#PhastCon
+```{r}
+cons.upMm <- read.table("~/Downloads/tss_upMm_mod_out.bed", header=F)
+cons.upMd <- read.table("~/Downloads/tss_upMd_mod_out.bed", header=F)
+cons.o2o <- read.table("~/Downloads/tss_o2o_mod_out.bed", header=F)
+cons.highcons <- read.table("~/Downloads/tss_highcons_mod_out.bed", header=F)
+
+colnames(cons.upMm) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.upMd) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.o2o) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.highcons) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+```
+
+```{r}
+cons.o2o <- cons.o2o %>% mutate(Group ="A")
+cons.upMm <- cons.upMm %>% mutate(Group ="B")
+cons.upMd <- cons.upMd %>% mutate(Group ="C")
+cons.highcons <- cons.highcons %>% mutate(Group ="D")
+```
+
+```{r}
+cons_scores <- rbind(cons.upMm, cons.upMd)
+cons_scores <- rbind(cons_scores, cons.highcons)
+
+colnames(cons_scores) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score", "Group")
+```
+
+#Graph
+```{r}
+p <- ggplot(aes(x=Score, color=Group), data=cons_scores_)
+p + geom_density(alpha = 0.2, size = 3) + scale_color_manual(values=c("mediumblue", "lightsteelblue", "black")) + theme_classic() + ggtitle("PhastCons_Promoter")
+```
+
+#Stats
+```{r}
+kruskal.test(Score ~ Group, data = cons_scores)
+
+dunn.test_phastcons <- as.data.frame(dunn.test(cons_scores$Score, cons_scores$Group,
+         method = "bonferroni", wrap = TRUE))
+
+dunn.test_phastcons
+```
+
+#PhyloP
+```{r}
+cons.upMm_phyloP <- read.table("~/Downloads/tss_upMm_mod_out_phyloP.bed", header=F)
+cons.upMd_phyloP <- read.table("~/Downloads/tss_upMd_mod_out_phyloP.bed", header=F)
+cons.o2o_phyloP <- read.table("~/Downloads/tss_o2o_mod_out_phyloP.bed", header=F)
+cons.highcons_phyloP <- read.table("~/Downloads/tss_highcons_mod_out_phyloP.bed", header=F)
+
+colnames(cons.upMm_phyloP) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.upMd_phyloP) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.o2o_phyloP) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+colnames(cons.highcons_phyloP) <- c("Chrom", "Upstream", "Downstream", "TSS", "Score")
+```
+
+
+```{r}
+
+cons.o2o_phyloP <- cons.o2o_phyloP %>% mutate(Group ="A")
+cons.upMm_phyloP <- cons.upMm_phyloP %>% mutate(Group ="B")
+cons.upMd_phyloP <- cons.upMd_phyloP %>% mutate(Group ="C")
+cons.highcons_phyloP <- cons.highcons_phyloP %>% mutate(Group ="D")
+```
+
+```{r}
+cons_scores_phyloP <- rbind(cons.upMm_phyloP, cons.upMd_phyloP)
+cons_scores_phyloP <- rbind(cons_scores_phyloP, cons.highcons_phyloP)
+```
+
+#graph
+```{r}
+p <- ggplot(aes(x=Score, color=Group), data=cons_scores_phyloP)
+p + geom_density(alpha = 0.2, lwd = 3) + scale_color_manual(values=c("mediumblue", "lightsteelblue", "black")) + theme_classic() + ggtitle("PhyloP_Promoter")
+```
+
+#stats
+```{r}
+kruskal.test(Score ~ Group, data = cons_scores_phyloP)
+
+dunn.test_phylop <- as.data.frame(dunn.test(cons_scores_phyloP$Score, cons_scores_phyloP$Group,
+         method = "bonferroni", wrap = TRUE))
+
+dunn.test_phylop
+```
