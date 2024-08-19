@@ -1,0 +1,404 @@
+
+http://ccb.jhu.edu/software/stringtie/dl/prepDE.py3
+http://ccb.jhu.edu/software/stringtie/index.shtml?t=manual#deseq
+
+python prepDE.py3 -i OpossumPython.txt -g opossum_gene_count_matrix.csv -t opossum_transcript_count_matrix.csv-l 200
+
+python prepDE.py3 -i MousePython.txt -g mouse_gene_count_matrix.csv -t mouse_transcript_count_matrix.csv-l 36
+
+#-i is the input file that lists the paths to the GTF files from stringtie
+# -g where to output the gene count matrix [default: gene_count_matrix.csv]
+# -t where to output the transcript count matrix [default: transcript_count_matrix.csv]
+#-l the average read length [default: 75]
+
+#loading necessary packages
+```{r}
+library(tidyverse)
+library(matrixStats)
+library(biomaRt)
+library(DESeq2)
+library(pheatmap)
+library(RColorBrewer)
+```
+
+
+#1 Read in and format tables
+reading in output tables from HISAT-STRINGTIE using -e option followed by python script to format data
+ 
+##Read in Gene Count table
+```{r}
+setwd("~/Desktop/Analyses/Stringtie_Output/ForDESeq")
+countData <- as.matrix(read.csv("opossum_gene_count_matrix_comb.csv", row.names="gene_id"))
+```
+
+#Make a data table to describe data for opossum
+```{r}
+samples <- colnames(countData) #makes a vector of all the samples
+sampleConditions_md <- c("2M", "2M", "2M", "3M", "3M", "3M", "3M", "4M", "4M", "4M", "AD", "AD", "AD", "AD", "AD", "AD", "2M", "AD", "1M", "1M")
+#makes a vector of the ages for each sample
+colData <- data.frame(Samples = samples, condition = sampleConditions_md, stringsAsFactors = FALSE)
+#combines vectors into a dataframe
+rownames(colData) <- colData$Samples #makes the sample names into the row names
+```
+
+```{r}
+#Check all sample IDs in colData are also in CountData and match their orders
+all(rownames(colData) %in% colnames(countData))
+countData <- countData[, rownames(colData)]
+all(rownames(colData) == colnames(countData))
+```
+
+##Create a DESeqDataSet from count matrix and labels
+```{r}
+#make DESeq object
+dds <- DESeqDataSetFromMatrix(countData = countData, colData = colData, design = ~ condition)
+dds <- DESeq(dds) #runs DESeq analysis
+
+res <- results(dds, pAdjustMethod = 'fdr')
+```
+
+```{r}
+#all from my notes from genomics
+res_data <- as.data.frame(res)#makes it into a proper data frame
+res_data_rows <- rownames_to_column(res_data, var = "gene") %>% arrange(padj)
+#makes the gene names into a column instead of the row names
+
+
+resOrdered <- res_data[order(res_data$padj),] #reorders by p value 
+
+sum(res_data$padj < 0.05, na.rm = TRUE) #this tells you the number of occurrences with a p value below 0.05
+
+```
+
+```{r}
+setwd("~/Desktop/Analyses/tx2gene_tables")
+write.table(res_data, file = "Opossum_DEseq.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+#Extracting pairwise data
+##1-2 Months
+
+```{r}
+res_1_2 <- results(dds, contrast = c("condition","1M", "2M"))
+res_data_1_2 <- as.data.frame(res_1_2)#makes it into a proper data frame
+sum(res_data_1_2$padj < 0.05, na.rm = TRUE) 
+sum(res_data_1_2$pvalue < 0.05, na.rm = TRUE) 
+```
+
+##2-3 Months
+
+```{r}
+res_2_3 <- results(dds, contrast = c("condition","2M", "3M"))
+res_data_2_3 <- as.data.frame(res_2_3)#makes it into a proper data frame
+sum(res_data_2_3$padj < 0.05, na.rm = TRUE) 
+sum(res_data_2_3$pvalue < 0.05, na.rm = TRUE) 
+```
+
+##3-4 Months
+```{r}
+res_3_4 <- results(dds, contrast = c("condition","3M", "4M"))
+res_data_3_4 <- as.data.frame(res_3_4)#makes it into a proper data frame
+sum(res_data_3_4$padj < 0.05, na.rm = TRUE) 
+sum(res_data_3_4$pvalue < 0.05, na.rm = TRUE) 
+```
+
+## 4M- AD Months
+```{r}
+res_4_ad <- results(dds, contrast = c("condition","4M", "AD"))
+res_data_4_ad <- as.data.frame(res_4_ad)#makes it into a proper data frame
+sum(res_data_4_ad$padj < 0.05, na.rm = TRUE) 
+sum(res_data_4_ad$pvalue < 0.05, na.rm = TRUE) 
+```
+
+##write tables
+```{r}
+
+write.table(res_data_1_2, file = "Opossum_DEseq_1_2M.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(res_data_2_3, file = "Opossum_DEseq_2_3M.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(res_data_3_4, file = "Opossum_DEseq_3_4M.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(res_data_4_ad, file = "Opossum_DEseq_4M_AD.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+
+
+```{r}
+plotMA(dds, ylim=c(-2,2), alpha = 0.05, colNonSig = "gray60", colSig = "blue")
+
+vst <- vst(dds, blind = TRUE)
+
+Md_vst_PCA_data <- plotPCA(vst, returnData = TRUE)
+Md_vst_PCA <- plotPCA(vst)
+Md_vst_PCA
+
+ggplot(Md_vst_PCA_data, aes(x = PC1, y = PC2, color = factor(condition))) + 
+geom_point(size =3, aes(fill=factor(condition))) + geom_point(size =3) + scale_color_manual(values=c("#FFCCCC", "#FF9999", "#FF6699", "#CC3399", "#990066")) + ggtitle("PCA Opossum Sub") + theme_classic()
+```
+
+
+
+
+#Hierarchical clustering
+
+```{r}
+sampleDists <- dist(t(assay(vst))) #gets "distance" between the samples following vst transformation
+sampleDistMatrix <- as.matrix(sampleDists) #turns that into a usable matrix
+rownames(sampleDistMatrix) <- paste(vst$condition) #adds the condition (age) as a row name to the matrix
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+#makes a heat map of distances along with the hierarchical clustering diagram
+```
+
+```{r}
+#to make a hierarchical clustering dendrogram without the heatmap
+#still using vst transformed data
+
+rv <- rowVars(assay(vst))
+o <- order(rv,decreasing=TRUE)
+dists <- dist(t(assay(vst)[head(o,500),]))
+
+hc <- hclust(dists)
+plot(hc, labels=vst$sample)
+```
+
+#Making normalized count and means tables
+```{r}
+countData_df <- as.data.frame(countData)
+countData_df$Gene_ID <- rownames(countData_df)
+countData_df <- separate(data = countData_df, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+```
+
+```{r}
+countData_df$Avg2M <- rowMeans(countData_df[ , c(1:3, 17)])
+countData_df$Avg1M <- rowMeans(countData_df[ , c(19:20)])
+countData_df$Avg3M <- rowMeans(countData_df[ , c(4:7)])
+countData_df$Avg4M <- rowMeans(countData_df[ , c(8:10)])
+countData_df$AvgAD <- rowMeans(countData_df[ , c(11:16, 18)])
+```
+
+```{r}
+write.table(countData_df, file = "DESeq_Counts.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+```{r}
+counts_norm <- counts(dds, normalized=T)
+counts_norm <- as.data.frame(counts_norm)
+counts_norm$Gene_ID <- rownames(counts_norm)
+counts_norm <- separate(data = counts_norm, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+```
+
+```{r}
+counts_norm$Avg1M_Norm <- rowMeans(counts_norm[ , c(19:20)])
+counts_norm$Avg2M_Norm <- rowMeans(counts_norm[ , c(1:3, 17)])
+counts_norm$Avg3M_Norm <- rowMeans(counts_norm[ , c(4:7)])
+counts_norm$Avg4M_Norm <- rowMeans(counts_norm[ , c(8:10)])
+counts_norm$AvgAD_Norm <- rowMeans(counts_norm[ , c(11:16, 18)])
+
+#counts_norm$diff1M2M <- abs(counts_norm$Avg2M - counts_norm$Avg1M)
+#counts_norm$div1M2M <- abs(counts_norm$Avg2M/counts_norm$Avg1M)
+```
+
+```{r}
+Means_table <- subset(counts_norm[ ,c(21:27)])
+```
+
+```{r}
+Means_table$Avg1_2_Norm <- rowMeans(Means_table[ , c(3:4)])
+
+Means_table$Avg2_3_Norm <- rowMeans(Means_table[ , c(4:5)])
+
+Means_table$Avg3_4_Norm <- rowMeans(Means_table[ , c(5:6)])
+
+Means_table$Avg4_AD_Norm <- rowMeans(Means_table[ , c(6:7)])
+```
+
+```{r}
+write.table(Means_table, file = "DESeq_NormMeansTable.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+
+## Subsetting based on fold change as well 
+
+#Using 4-fold as cutoff
+
+```{r}
+res_data_1_2_sig <- filter(res_data_1_2, padj <= 0.05 & abs(log2FoldChange) >= 2)
+res_data_2_3_sig <- filter(res_data_2_3, padj <= 0.05 & abs(log2FoldChange) >= 2)
+res_data_3_4_sig <- filter(res_data_3_4, padj <= 0.05 & abs(log2FoldChange) >= 2)
+res_data_4_Ad_sig <- filter(res_data_4_ad, padj <= 0.05 & abs(log2FoldChange) >= 2)
+
+sum(res_data_1_2$padj <= 0.05 & abs(res_data_1_2$log2FoldChange) >= 2, na.rm = TRUE)
+sum(res_data_2_3$padj <= 0.05 & abs(res_data_2_3$log2FoldChange) >= 2, na.rm = TRUE)
+sum(res_data_3_4$padj <= 0.05 & abs(res_data_3_4$log2FoldChange) >= 2, na.rm = TRUE)
+sum(res_data_4_ad$padj <= 0.05 & abs(res_data_4_ad$log2FoldChange) >= 2, na.rm = TRUE)
+```
+
+
+```{r}
+#to add gene names as a column and separate the ID from the common name
+res_data_1_2_sig$Gene_ID <- rownames(res_data_1_2_sig)
+res_data_1_2_sig <- separate(data = res_data_1_2_sig, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+#to add gene names as a column and separate the ID from the common name
+res_data_2_3_sig$Gene_ID <- rownames(res_data_2_3_sig)
+res_data_2_3_sig <- separate(data = res_data_2_3_sig, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+res_data_3_4_sig$Gene_ID <- rownames(res_data_3_4_sig)
+res_data_3_4_sig <- separate(data = res_data_3_4_sig, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+res_data_4_Ad_sig$Gene_ID <- rownames(res_data_4_Ad_sig)
+res_data_4_Ad_sig <- separate(data = res_data_4_Ad_sig, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+```
+
+
+```{r}
+library("pheatmap")
+select <- order(rowMeans(counts(dds,normalized=TRUE)),
+                decreasing=TRUE)[1:20]
+df <- as.data.frame(colData(dds)[,c("condition")])
+rownames(df) <- colnames(assay(rld)[select,])
+pheatmap(assay(vst)[select,], cluster_rows=FALSE,
+         cluster_cols=FALSE, annotation_col=df)
+pheatmap(assay(rld)[select,], cluster_rows=FALSE,
+         cluster_cols=FALSE, annotation_col=df)
+```
+
+#----
+#make combined table with sig genes and normalized means
+```{r}
+count_data_1_2_sig <- left_join(res_data_1_2_sig, Means_table, by = "Gene_ID")
+
+count_data_2_3_sig <- left_join(res_data_2_3_sig, Means_table, by = "Gene_ID")
+
+count_data_3_4_sig <- left_join(res_data_3_4_sig, Means_table, by = "Gene_ID")
+
+count_data_4_Ad_sig <- left_join(res_data_4_Ad_sig, Means_table, by = "Gene_ID")
+```
+
+
+```{r}
+ggplot(data = count_data_1_2_sig, aes(x = Avg1M_Norm, y = Avg2M_Norm)) + geom_point()
+
+ggplot(data = count_data_1_2_sig, aes(x = Avg1M_Norm, y = Avg2M_Norm)) + 
+  geom_point() +
+  xlim(0, 300000) +
+  ylim(0, 300000)
+
+ggplot(data = count_data_1_2_sig, aes(x = Avg1M_Norm, y = Avg2M_Norm)) + 
+  geom_point() +
+  xlim(0, 5000) +
+  ylim(0, 5000)
+
+ggplot(data = count_data_1_2_sig, aes(x = Avg1M_Norm, y = Avg2M_Norm)) + 
+  geom_point() +
+  xlim(0, 50) +
+  ylim(0, 50)
+
+```
+
+#Filter based on expression means
+```{r}
+count_data_1_2_sig_50 <- filter(count_data_1_2_sig, Avg1_2_Norm >= 50)
+count_data_2_3_sig_50 <- filter(count_data_2_3_sig, Avg2_3_Norm >= 50)
+count_data_3_4_sig_50 <- filter(count_data_3_4_sig, Avg3_4_Norm >= 50)
+count_data_4_Ad_sig_50 <- filter(count_data_4_Ad_sig, Avg4_AD_Norm >= 50)
+```
+
+
+```{r}
+ggplot(data = count_data_1_2_sig, aes(x = Avg1M_Norm, y = Avg2M_Norm)) + 
+  geom_point() +
+  xlim(0, 100) +
+  ylim(0, 100) + 
+  geom_hline(yintercept=20, linetype = "dashed") + 
+  geom_vline(xintercept=20, linetype = "dashed") + 
+  theme_classic()
+```
+
+#Making count tables for graphing
+```{r}
+res_data_1_2$Gene_ID <- rownames(res_data_1_2)
+res_data_1_2 <- separate(data = res_data_1_2, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+res_data_2_3$Gene_ID <- rownames(res_data_2_3)
+res_data_2_3 <- separate(data = res_data_2_3, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+res_data_3_4$Gene_ID <- rownames(res_data_3_4)
+res_data_3_4 <- separate(data = res_data_3_4, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+res_data_4_ad$Gene_ID <- rownames(res_data_4_ad)
+res_data_4_ad <- separate(data = res_data_4_ad, col = Gene_ID, into = c("Gene_ID", "Gene_Name"), sep = "\\|")
+
+count_data_1_2 <- left_join(res_data_1_2, Means_table, by = "Gene_ID")
+count_data_2_3 <- left_join(res_data_2_3, Means_table, by = "Gene_ID")
+count_data_3_4 <- left_join(res_data_3_4, Means_table, by = "Gene_ID")
+count_data_4_Ad <- left_join(res_data_4_ad, Means_table, by = "Gene_ID")
+
+```
+
+```{r}
+ggplot(data = count_data_1_2, aes(x = log2(Avg1M_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  theme_classic()
+
+ggplot(data = count_data_2_3, aes(x = log2(Avg2M_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  theme_classic()
+
+ggplot(data = count_data_3_4, aes(x = log2(Avg3M_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  theme_classic()
+
+ggplot(data = count_data_4_Ad, aes(x = log2(Avg4M_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  theme_classic()
+```
+
+
+```{r}
+ggplot(data = count_data_1_2, aes(x = log2(Avg1_2_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  geom_vline(xintercept = 5.644, color = "blue") +
+  theme_classic()
+
+ggplot(data = count_data_2_3, aes(x = log2(Avg2_3_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  geom_vline(xintercept = 5.644, color = "blue") +
+  theme_classic()
+
+ggplot(data = count_data_3_4, aes(x = log2(Avg3_4_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  geom_vline(xintercept = 5.644, color = "blue") +
+  theme_classic()
+
+ggplot(data = count_data_4_Ad, aes(x = log2(Avg4_AD_Norm), y = log2FoldChange)) + 
+  geom_point() +
+  geom_hline(yintercept = 2, color = "red" ) +
+  geom_hline(yintercept = -2, color = "red") +
+  geom_vline(xintercept = 5.644, color = "blue") +
+  theme_classic()
+```
+
+```{r}
+write.table(count_data_1_2_sig_50, file = "DESeq_1v2_FC4_SigMean50.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(count_data_2_3_sig_50, file = "DESeq_2v3_FC4_SigMean50.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(count_data_3_4_sig_50, file = "DESeq_3v4_FC4_SigMean50.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(count_data_4_Ad_sig_50, file = "DESeq_4vAd_FC4_SigMean50.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
