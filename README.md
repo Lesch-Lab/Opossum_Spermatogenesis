@@ -11,6 +11,7 @@ Single cell RNA-seq data was processed and visualized using Scanpy and other pyt
 zFPKM is a method of normalizing gene expression data developed by Hart et al. [1]. This method allows for normalization within samples for comparative analyses across libriraries, experiments, and species. This requires FPKM expression values for input. I modified code available from Uebbing et al. [2] 
  
 [1] Hart et al. 2013: Finding the active genes in deep RNA-seq gene expression studies. BMC Genomics 14:778.
+
 [2] Uebbing et al. 2016: Divergence in gene expression within and between two closely related flycatcher species. Mol Ecol 25, 2015–2028. https://github.com/severinEvo/gene_expression/blob/master/zFPKM.R
 
 ## Pst_Calc.R
