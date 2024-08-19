@@ -19,6 +19,7 @@ Pst is a comparison of within-population variance and between-population varianc
 Data input was a matrix of zFPKM normalized expression values by gene (row) for each individual (column) and a corresponding list of species classification for each individual. 
 
 [2] Uebbing et al. 2016. Divergence in gene expression within and between two closely related flycatcher species. Mol Ecol 25, 2015–2028. https://github.com/severinEvo/gene_expression/blob/master/Pst.R
+
 [3] Antoniazza et al. 2010. Local adaptation maintains clinal variation in melanin-based coloration of European barn owls (Tyto alba). Evolution 64, 1944–1954
 
 ## Pst_Bootstrap.R
