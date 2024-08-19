@@ -1,5 +1,5 @@
 # Opossum_Spermatogenesis
-This is a collection of scripts for analyzing and comparing RNA-seq data collected from multiple species corresponding to analyses described in Marshall et al., Dev Cell 2024. For file paths and file names, many have been listed as "pathto", "filename", or "OutFileName" which should be replaced based on file names and path structure for each user. 
+This is a collection of scripts for analyzing and comparing RNA-seq data collected from multiple species corresponding to analyses described in Marshall et al., Dev Cell 2024. For file paths and file names, many have been listed as "pathto", "filename", or "OutFileName" which should be replaced based on file names and path structure for each user. Some scripts contain specific file names (example "UpMm.txt") that should be substituted to represent user data. 
 
 ## AlignmentHISAT_Stringtie
 RNA-sequencing alignment and counting was performed using HISAT and StringTie along with SAMtools. Input is species-specific HISAT index and RNA-seq fastq files.
