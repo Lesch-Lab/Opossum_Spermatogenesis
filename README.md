@@ -1,7 +1,8 @@
 # Opossum_Spermatogenesis
+This is a collection of scripts for analyzing and comparing RNA-seq data collected from multiple species corresponding to analyses described in Marshall et al., Dev Cell 2024.
 
 ## AlignmentHISAT_Stringtie
-RNA-sequencing alignment and couonting was performed using HISAT and StringTie along with SAMtools. Input is species-specific HISAT index and RNA-seq fastq files.
+RNA-sequencing alignment and counting was performed using HISAT and StringTie along with SAMtools. Input is species-specific HISAT index and RNA-seq fastq files.
 
 ## SingleCell_Jupyter.ipynb
 Single cell RNA-seq data was processed and visualized using Scanpy and other python programs. 
@@ -32,6 +33,7 @@ This is an R Noteboook for six-species comparisons of transcriptomic divergence 
 •	creating and plotting trees based on transcriptional divergence
 •	bootstrapping trees for node distribution as well as branch length
 •	statistical analysis
+
 Data input includes gene IDs for orthologs across species, gene lists for genes with conserved expression, higher expression in each group, zFPKM normalized counts for each sample (column) by gene (row).
 
 ## PhastCons_PhyloP.Rmd
